@@ -2,15 +2,17 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable; // IMPORTANT CHANGE
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Notifications\Notifiable;
 
-class Employee extends Model
+class Employee extends Authenticatable // Changed from Model to Authenticatable
 {
-    // Tell Laravel your primary key is not 'id', but 'EmployeeID'
-    protected $primaryKey = 'EmployeeID';
+    use HasFactory, Notifiable;
 
-    // THIS IS THE FIX:
-    // We list every single column that we want to allow saving.
+    protected $primaryKey = 'EmployeeID';
+    
+    // Allow password and other fields to be filled
     protected $fillable = [
         'FirstName', 
         'MiddleName', 
@@ -18,10 +20,17 @@ class Employee extends Model
         'Age', 
         'ContactNumber', 
         'Address', 
-        'Photo',  
-        'Status',
-        'Email',
-        'Phone' // Keep generic phone/email just in case
+        'Photo', 
+        'DepartmentID', 
+        'ShiftID', 
+        'Status', 
+        'Email', 
+        'Phone', 
+        'password'
+    ];
+
+    protected $hidden = [
+        'password', 'remember_token',
     ];
 
     // Relationships

@@ -51,18 +51,19 @@
                         <tr class="hover:bg-gray-50 transition">
                             <td class="px-6 py-4 font-bold text-blue-600">{{ str_pad($index + 1, 2, '0', STR_PAD_LEFT) }}</td>
                             <td class="px-6 py-4 font-bold text-gray-800">
-                                <div class="flex items-center">
+                                <!-- WRAP THE CONTENT IN AN A TAG LINKING TO SHOW PAGE -->
+                                <a href="{{ route('employees.show', $employee->EmployeeID) }}" class="flex items-center hover:text-blue-600 transition group">
                                     @if($employee->Photo)
                                         <!-- Displays the uploaded photo -->
-                                        <img src="{{ asset('storage/' . $employee->Photo) }}" class="h-8 w-8 rounded-full mr-3 object-cover border border-gray-200">
+                                        <img src="{{ asset('storage/' . $employee->Photo) }}" class="h-8 w-8 rounded-full mr-3 object-cover border border-gray-200 group-hover:border-blue-400">
                                     @else
                                         <!-- Displays Initial if no photo -->
-                                        <div class="h-8 w-8 rounded-full bg-blue-100 text-blue-600 mr-3 flex items-center justify-center text-xs font-bold border border-blue-200">
+                                        <div class="h-8 w-8 rounded-full bg-blue-100 text-blue-600 mr-3 flex items-center justify-center text-xs font-bold border border-blue-200 group-hover:border-blue-400">
                                             {{ substr($employee->FirstName, 0, 1) }}
                                         </div>
                                     @endif
                                     {{ $employee->FirstName }} {{ $employee->LastName }}
-                                </div>
+                                </a>
                             </td>
                             <td class="px-6 py-4 text-gray-600">{{ $employee->ContactNumber }}</td>
                             <td class="px-6 py-4 text-gray-600">{{ $employee->department->DepartmentName ?? 'None' }}</td>

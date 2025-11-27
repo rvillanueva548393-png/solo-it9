@@ -42,18 +42,20 @@
                 </a>
             </li>
 
-            <!-- Report Link -->
+            <!-- Report Link (THIS WAS THE ISSUE) -->
             <li>
-                <a href="#" class="flex items-center px-4 py-3 text-sm font-medium text-gray-500 hover:text-orange-500 transition">
-                    <i data-lucide="mail" class="h-5 w-5 mr-3"></i> 
+                <a href="{{ route('report') }}" class="flex items-center px-4 py-3 text-sm font-medium {{ Request::routeIs('report') ? 'bg-orange-100 text-blue-900 font-bold rounded-lg relative overflow-hidden' : 'text-gray-500 hover:text-orange-500 transition' }}">
+                    @if(Request::routeIs('report')) <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-orange-400"></div> @endif
+                    <i data-lucide="mail" class="h-5 w-5 mr-3 {{ Request::routeIs('report') ? 'ml-2' : '' }}"></i> 
                     <span>Report</span>
                 </a>
             </li>
 
             <!-- Activity Logs Link -->
             <li>
-                <a href="#" class="flex items-center px-4 py-3 text-sm font-medium text-gray-500 hover:text-orange-500 transition">
-                    <i data-lucide="clock" class="h-5 w-5 mr-3"></i> 
+                <a href="{{ route('activity.logs') }}" class="flex items-center px-4 py-3 text-sm font-medium {{ Request::routeIs('activity.logs') ? 'bg-orange-100 text-blue-900 font-bold rounded-lg relative overflow-hidden' : 'text-gray-500 hover:text-orange-500 transition' }}">
+                    @if(Request::routeIs('activity.logs')) <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-orange-400"></div> @endif
+                    <i data-lucide="clock" class="h-5 w-5 mr-3 {{ Request::routeIs('activity.logs') ? 'ml-2' : '' }}"></i> 
                     <span>Activity Logs</span>
                 </a>
             </li>
@@ -70,12 +72,18 @@
 
         <div class="mt-8 mb-4 pl-2"><span class="text-[10px] font-bold text-orange-400 uppercase tracking-widest">Settings</span></div>
         <ul class="space-y-2">
-             <li><a href="#" class="flex items-center px-4 py-3 text-sm font-medium text-gray-500 hover:text-orange-500"><i data-lucide="settings" class="h-5 w-5 mr-3"></i> <span>Settings</span></a></li>
+             <li>
+                <a href="{{ route('settings') }}" class="flex items-center px-4 py-3 text-sm font-medium {{ Request::routeIs('settings') ? 'bg-orange-100 text-blue-900 font-bold rounded-lg relative overflow-hidden' : 'text-gray-500 hover:text-orange-500 transition' }}">
+                    @if(Request::routeIs('settings')) <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-orange-400"></div> @endif
+                    <i data-lucide="settings" class="h-5 w-5 mr-3 {{ Request::routeIs('settings') ? 'ml-2' : '' }}"></i> 
+                    <span>Settings</span>
+                </a>
+             </li>
              
              <!-- Logout Button -->
              <li>
-                <form action="{{ route('login') }}" method="GET"> 
-                    <!-- Note: Using GET to go back to login for now -->
+                <form action="{{ route('logout') }}" method="POST"> 
+                    @csrf
                     <button type="submit" class="flex items-center w-full px-4 py-3 text-sm font-medium text-gray-500 hover:text-red-500 transition">
                         <i data-lucide="log-out" class="h-5 w-5 mr-3"></i> 
                         <span>Logout</span>

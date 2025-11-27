@@ -6,20 +6,29 @@ use App\Models\Employee;
 use App\Models\Department;
 use App\Models\Shift;
 use App\Models\Attendance;
-use App\Models\ActivityLog; // Imported the new ActivityLog model
+use App\Models\ActivityLog;
+use App\Models\Manager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
 
 class EmployeeController extends Controller
 {
+    // ==========================
+    // ADMIN DASHBOARD
+    // ==========================
+
     // 1. Show the Dashboard with Employee List
     public function index()
     {
-        // Get employees with their Department info, newest first
         $employees = Employee::with('department')->latest()->get();
         return view('dashboard', compact('employees'));
     }
+
+    // ==========================
+    // REGISTRATION
+    // ==========================
 
     // 2. Show the Register Form
     public function create()
@@ -29,56 +38,103 @@ class EmployeeController extends Controller
         return view('register', compact('departments', 'shifts'));
     }
 
-    // 3. Store the New Employee (With Photo Upload)
+    // 3. Store the New Employee
     public function store(Request $request)
     {
-        // A. Validate the incoming data
+        // Validate Input
         $validated = $request->validate([
             'FirstName' => 'required|string|max:255',
             'MiddleName' => 'nullable|string|max:255',
             'LastName' => 'required|string|max:255',
             'Age' => 'nullable|integer',
             'ContactNumber' => 'required|string',
+            'Email' => 'required|email|unique:employees,Email',
+            'password' => 'required|string|min:6',
             'Address' => 'required|string',
-            'Photo' => 'nullable|image|max:2048', // Max 2MB image
-            // Foreign keys
+            'Photo' => 'nullable|image|max:2048',
             'DepartmentID' => 'nullable|exists:departments,DepartmentID',
             'ShiftID' => 'nullable|exists:shifts,ShiftID',
         ]);
 
-        // B. Handle File Upload (Face Picture)
+        // Handle Photo Upload
         if ($request->hasFile('Photo')) {
-            // Save to 'storage/app/public/photos' and get the filename
             $path = $request->file('Photo')->store('photos', 'public');
             $validated['Photo'] = $path;
         }
 
-        // C. Save to Database
+        // Hash Password
+        $validated['password'] = Hash::make($request->password);
+
+        // Save to Database
         $employee = Employee::create($validated);
 
-        // D. Create an Activity Log entry (Optional but good for your timeline)
+        // Create Activity Log
         ActivityLog::create([
             'description' => 'New Employee (' . $employee->FirstName . ') Registered',
         ]);
 
-        // E. Redirect back to Dashboard
         return redirect()->route('dashboard')->with('success', 'Employee Registered Successfully!');
     }
 
-    // 4. Show Daily Logs Page
-        public function logs()
+    // ==========================
+    // EMPLOYEE MANAGEMENT
+    // ==========================
+
+    // 4. Show Single Employee Details
+    public function show($id)
     {
-        // Fetch attendances with the related employee data, ordered by date
-        $attendances = Attendance::with('employee')->orderBy('Date', 'desc')->get();
+        $employee = Employee::with(['department', 'shift'])->findOrFail($id);
+        return view('employee_details', compact('employee'));
+    }
+
+    // 5. Update Employee Details
+    public function update(Request $request, $id)
+    {
+        $employee = Employee::findOrFail($id);
         
+        $validated = $request->validate([
+            'Email' => 'required|email|unique:employees,Email,'.$id.',EmployeeID',
+            'ContactNumber' => 'required|string',
+            'Age' => 'nullable|integer',
+            'Address' => 'required|string',
+            'DepartmentID' => 'required|exists:departments,DepartmentID',
+            'ShiftID' => 'required|exists:shifts,ShiftID',
+        ]);
+
+        $employee->update($validated);
+
+        return back()->with('success', 'Employee Profile Updated Successfully!');
+    }
+
+    // 6. Delete Employee
+    public function destroy($id)
+    {
+        $employee = Employee::findOrFail($id);
+        
+        // Delete photo from storage if exists
+        if ($employee->Photo) {
+            Storage::disk('public')->delete($employee->Photo);
+        }
+
+        $employee->delete();
+
+        return redirect()->route('dashboard')->with('success', 'Employee Record Deleted Successfully!');
+    }
+
+    // ==========================
+    // LOGS & ANALYTICS
+    // ==========================
+
+    // 7. Show Daily Logs Page
+    public function logs()
+    {
+        $attendances = Attendance::with('employee')->orderBy('Date', 'desc')->get();
         return view('logs', compact('attendances'));
     }
-    
 
-    // 5. Attendance Analytics Page (Donut Chart)
+    // 8. Attendance Analytics Page
     public function attendance()
     {
-        // 1. Get Totals for TODAY
         $totalEmployees = Employee::count();
         
         $present = Attendance::whereDate('Date', Carbon::today())
@@ -89,25 +145,85 @@ class EmployeeController extends Controller
                           ->where('Status', 'Late')
                           ->count();
 
-        // Check if any employees are not logged yet (Assume Absent)
-        // This logic finds employees who DO NOT have an attendance record for today
         $loggedIds = Attendance::whereDate('Date', Carbon::today())->pluck('EmployeeID');
         $absent = Employee::whereNotIn('EmployeeID', $loggedIds)->count();
 
-        // 2. Calculate Percentage for the Graph
-        // Avoid division by zero
         $percentage = $totalEmployees > 0 ? round(($present / $totalEmployees) * 100) : 0;
 
         return view('attendance_analytics', compact('totalEmployees', 'present', 'late', 'absent', 'percentage'));
     }
-    
 
-    // 6. NEW: Activity Logs Page (Timeline)
+    // 9. Activity Logs Page
     public function activityLogs()
     {
-        // Get logs, newest first
         $activities = ActivityLog::orderBy('created_at', 'desc')->get();
-        
         return view('activity_logs', compact('activities'));
+    }
+
+    // ==========================
+    // SETTINGS
+    // ==========================
+
+    // 10. Settings Page
+    public function settings()
+    {
+        return view('settings');
+    }
+
+    // 11. Update Settings (Password)
+    public function updateSettings(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required',
+            'new_password' => 'required|min:6|confirmed',
+        ]);
+
+        // Find Admin (Manager ID 1)
+        $admin = Manager::find(1);
+
+        if (!$admin) {
+            return back()->withErrors(['msg' => 'Admin account not found.']);
+        }
+
+        if (!Hash::check($request->current_password, $admin->password)) {
+            return back()->withErrors(['current_password' => 'The provided password does not match your current password.']);
+        }
+
+        $admin->password = Hash::make($request->new_password);
+        $admin->save();
+
+        return back()->with('success', 'Password updated successfully!');
+    }
+
+    // ==========================
+    // REPORT PAGE
+    // ==========================
+
+    // 12. Show Report Page
+    public function report()
+    {
+        // Calculate Statistics for Today
+        $totalEmployees = Employee::count();
+        
+        // FIX: Count based on the Attendance record's INITIAL status, not the employee's current status.
+        // When an employee clocks in, we save 'Present' or 'Late' in the attendance table.
+        // Even if they clock out later, this record remains.
+        
+        $onTime = Attendance::whereDate('Date', Carbon::today())
+                            ->where('Status', 'Present') // This checks the initial status given at login
+                            ->count();
+                            
+        $late = Attendance::whereDate('Date', Carbon::today())
+                         ->where('Status', 'Late')
+                         ->count();
+                         
+        // Calculate Absent: Total Employees - (Those who have an attendance record today)
+        $presentCount = Attendance::whereDate('Date', Carbon::today())->count();
+        $onLeave = $totalEmployees - $presentCount; 
+
+        // Get recent activity logs for the report list
+        $recentActivities = ActivityLog::latest()->take(5)->get();
+
+        return view('report', compact('totalEmployees', 'onTime', 'late', 'onLeave', 'recentActivities'));
     }
 }

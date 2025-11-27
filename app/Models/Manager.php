@@ -2,9 +2,27 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+// THIS LINE IS CRITICAL:
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Notifications\Notifiable;
 
-class Manager extends Model
+// MUST EXTEND Authenticatable (NOT Model)
+class Manager extends Authenticatable
 {
-    //
+    use HasFactory, Notifiable;
+
+    protected $primaryKey = 'ManagerID';
+
+    protected $fillable = [
+        'Name',
+        'Email',
+        'Phone',
+        'password',
+    ];
+
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
 }

@@ -5,7 +5,7 @@
     <!-- Left Side: Image Overlay -->
     <div class="hidden md:block md:w-1/2 lg:w-3/5 relative bg-slate-900">
         <img 
-            src="[https://images.unsplash.com/photo-1554469384-e58fac16e23a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80](https://images.unsplash.com/photo-1554469384-e58fac16e23a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80)" 
+            src="https://images.unsplash.com/photo-1554469384-e58fac16e23a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" 
             alt="Building" 
             class="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-overlay"
         />
@@ -27,26 +27,45 @@
                  <span class="text-[10px] font-bold text-blue-900 text-center px-1">DJLN LOGO</span>
             </div>
             
-            <h2 class="text-xl font-bold text-blue-900 tracking-wide">ADMIN LOGIN</h2>
-            <p class="mt-2 text-sm text-gray-500">Login with your <span class="text-yellow-500 font-bold">admin</span> credential.</p>
+            <h2 class="text-xl font-bold text-blue-900 tracking-wide">LOGIN</h2>
+            <p class="mt-2 text-sm text-gray-500">Login with your <span class="text-yellow-500 font-bold">Email</span> credential.</p>
 
             <!-- Form -->
             <form class="mt-8 space-y-6" action="{{ route('login.post') }}" method="POST">
                 @csrf <!-- Security Token Required by Laravel -->
                 
+                <!-- Global Error Message (Optional) -->
+                @if ($errors->any())
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                        <strong class="font-bold">Error!</strong>
+                        <span class="block sm:inline">{{ $errors->first() }}</span>
+                    </div>
+                @endif
+
                 <div class="space-y-4">
+                    <!-- Email Field -->
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <i data-lucide="user" class="h-5 w-5 text-gray-400"></i>
                         </div>
-                        <input type="email" name="email" required class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-yellow-500 focus:outline-none" placeholder="Email">
+                        <input type="email" name="email" required 
+                            class="block w-full pl-10 pr-3 py-3 border {{ $errors->has('email') ? 'border-red-500' : 'border-gray-300' }} rounded-lg bg-gray-50 focus:ring-2 focus:ring-yellow-500 focus:outline-none" 
+                            placeholder="Email"
+                            value="{{ old('email') }}">
                     </div>
+                    <!-- Show specific email error below input -->
+                    @error('email')
+                        <p class="text-red-500 text-xs italic mt-1">{{ $message }}</p>
+                    @enderror
                     
+                    <!-- Password Field -->
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                              <i data-lucide="lock" class="h-5 w-5 text-gray-400"></i>
                         </div>
-                        <input type="password" name="password" required class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-yellow-500 focus:outline-none" placeholder="Enter password...">
+                        <input type="password" name="password" required 
+                            class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-yellow-500 focus:outline-none" 
+                            placeholder="Enter password...">
                     </div>
                 </div>
 
