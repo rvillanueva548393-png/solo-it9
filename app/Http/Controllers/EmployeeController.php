@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf; // Import the PDF Library
 
 class EmployeeController extends Controller
 {
@@ -196,7 +197,7 @@ class EmployeeController extends Controller
     }
 
     // ==========================
-    // REPORT PAGE
+    // REPORT PAGE & PDF
     // ==========================
 
     // 12. Show Report Page
@@ -205,19 +206,16 @@ class EmployeeController extends Controller
         // Calculate Statistics for Today
         $totalEmployees = Employee::count();
         
-        // FIX: Count based on the Attendance record's INITIAL status, not the employee's current status.
-        // When an employee clocks in, we save 'Present' or 'Late' in the attendance table.
-        // Even if they clock out later, this record remains.
-        
+        // Count based on INITIAL status (Present/Late) to preserve count after checkout
         $onTime = Attendance::whereDate('Date', Carbon::today())
-                            ->where('Status', 'Present') // This checks the initial status given at login
+                            ->where('Status', 'Present')
                             ->count();
                             
         $late = Attendance::whereDate('Date', Carbon::today())
                          ->where('Status', 'Late')
                          ->count();
                          
-        // Calculate Absent: Total Employees - (Those who have an attendance record today)
+        // Calculate Absent
         $presentCount = Attendance::whereDate('Date', Carbon::today())->count();
         $onLeave = $totalEmployees - $presentCount; 
 
@@ -225,5 +223,31 @@ class EmployeeController extends Controller
         $recentActivities = ActivityLog::latest()->take(5)->get();
 
         return view('report', compact('totalEmployees', 'onTime', 'late', 'onLeave', 'recentActivities'));
+    }
+
+    // 13. Download Report PDF
+    public function downloadReport()
+    {
+        // 1. Fetch the exact same data as the report page
+        $totalEmployees = Employee::count();
+        
+        $onTime = Attendance::whereDate('Date', Carbon::today())
+                            ->where('Status', 'Present')
+                            ->count();
+                            
+        $late = Attendance::whereDate('Date', Carbon::today())
+                         ->where('Status', 'Late')
+                         ->count();
+                         
+        $presentCount = Attendance::whereDate('Date', Carbon::today())->count();
+        $onLeave = $totalEmployees - $presentCount; 
+
+        $recentActivities = ActivityLog::latest()->take(20)->get(); // Get more rows for PDF
+
+        // 2. Load the PDF View
+        $pdf = Pdf::loadView('report_pdf', compact('totalEmployees', 'onTime', 'late', 'onLeave', 'recentActivities'));
+
+        // 3. Download the file
+        return $pdf->download('DJLN_Report_' . Carbon::now()->format('Y-m-d') . '.pdf');
     }
 }

@@ -9,10 +9,13 @@ class Attendance extends Model
     protected $primaryKey = 'AttendanceID';
     
     // Ensure 'Date' is in fillable so we can create logs
+    // Added 'LunchStart' and 'LunchEnd' based on the migration
     protected $fillable = [
         'EmployeeID', 
         'Date', 
         'CheckInTime', 
+        'LunchStart', // Added
+        'LunchEnd',   // Added
         'CheckOutTime', 
         'Status'
     ];
