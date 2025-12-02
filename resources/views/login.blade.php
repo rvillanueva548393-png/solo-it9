@@ -23,8 +23,12 @@
         <div class="w-full max-w-md space-y-8 text-center">
             
             <!-- Logo Area -->
-            <div class="mx-auto h-24 w-24 bg-gray-100 rounded-full flex items-center justify-center border-2 border-blue-900 mb-4 overflow-hidden relative">
-                 <span class="text-[10px] font-bold text-blue-900 text-center px-1">DJLN LOGO</span>
+            <div class="mx-auto h-24 w-24 bg-blue-900 rounded-full flex items-center justify-center mb-4 overflow-hidden relative shadow-lg">
+                 <!-- Stylized Text Logo -->
+                 <div class="text-center">
+                    <h1 class="text-2xl font-extrabold text-white tracking-tighter leading-none">DJLN</h1>
+                    <div class="w-8 h-1 bg-yellow-400 mx-auto mt-1 rounded-full"></div>
+                 </div>
             </div>
             
             <h2 class="text-xl font-bold text-blue-900 tracking-wide">LOGIN</h2>

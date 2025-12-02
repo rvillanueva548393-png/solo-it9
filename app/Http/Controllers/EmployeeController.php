@@ -245,6 +245,7 @@ class EmployeeController extends Controller
         $recentActivities = ActivityLog::latest()->take(20)->get(); // Get more rows for PDF
 
         // 2. Load the PDF View
+        // Make sure you have created resources/views/report_pdf.blade.php
         $pdf = Pdf::loadView('report_pdf', compact('totalEmployees', 'onTime', 'late', 'onLeave', 'recentActivities'));
 
         // 3. Download the file
