@@ -31,8 +31,8 @@
                     
                     <p class="text-sm font-bold text-gray-200">{{ \Carbon\Carbon::parse($log->Date)->format('M d, Y') }}</p>
                     <div class="text-xs text-gray-400 mt-1">
-                        <span class="block">In: {{ $log->CheckInTime ? \Carbon\Carbon::parse($log->CheckInTime)->format('h:i A') : '--:--' }}</span>
-                        <span class="block">Out: {{ $log->CheckOutTime ? \Carbon\Carbon::parse($log->CheckOutTime)->format('h:i A') : '--:--' }}</span>
+                        <span class="block">In: {{ $log->CheckInTime ? \Carbon\Carbon::parse($log->CheckInTime)->format('g:i A') : '--:--' }}</span>
+                        <span class="block">Out: {{ $log->CheckOutTime ? \Carbon\Carbon::parse($log->CheckOutTime)->format('g:i A') : '--:--' }}</span>
                     </div>
                 </div>
                 @empty
@@ -53,8 +53,8 @@
             <!-- Header -->
             <div class="flex justify-between items-start mb-8">
                 <div>
-                    <h1 class="text-3xl font-extrabold text-blue-900 tracking-tight">{{ now()->format('l') }}</h1>
-                    <p class="text-lg text-gray-500 font-medium">{{ now()->format('F d, Y') }}</p>
+                    <h1 class="text-3xl font-extrabold text-blue-900 tracking-tight">{{ now()->setTimezone('Asia/Manila')->format('l') }}</h1>
+                    <p class="text-lg text-gray-500 font-medium">{{ now()->setTimezone('Asia/Manila')->format('F d, Y') }}</p>
                 </div>
                 
                 <form action="{{ route('logout') }}" method="POST">
@@ -93,10 +93,60 @@
                     <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Today's Action</p>
                     
                     @php
-                        $status = Auth::guard('employee')->user()->Status;
-                        $isClockedIn = stripos($status, 'Time In') !== false;
-                        $isClockedOut = stripos($status, 'Time Out') !== false;
-                        $isOnLunch = stripos($status, 'Lunch Break') !== false;
+                        // FIX: Get REAL-TIME status from today's attendance record
+                        
+                        $today = \Carbon\Carbon::today()->toDateString(); 
+                        $attendance = Auth::guard('employee')->user()->attendances()
+                                        ->where('Date', $today)
+                                        ->first();
+
+                        $isClockedIn = false;
+                        $isClockedOut = false;
+                        $isOnLunch = false;
+                        $displayTime = '-- : --';
+
+                        if ($attendance) {
+                            if ($attendance->CheckOutTime) {
+                                $isClockedOut = true;
+                                $displayTime = \Carbon\Carbon::parse($attendance->CheckOutTime)->setTimezone('Asia/Manila')->format('g:i A');
+                            } elseif ($attendance->LunchStart && !$attendance->LunchEnd) {
+                                $isOnLunch = true;
+                                $displayTime = \Carbon\Carbon::parse($attendance->LunchStart)->setTimezone('Asia/Manila')->format('g:i A');
+                            } else {
+                                $isClockedIn = true;
+                                $displayTime = \Carbon\Carbon::parse($attendance->CheckInTime)->setTimezone('Asia/Manila')->format('g:i A');
+                            }
+                        }
+
+                        // --- STRICT TIME LOGIC FOR VIEW ---
+                        $now = \Carbon\Carbon::now('Asia/Manila');
+                        
+                        $employee = Auth::guard('employee')->user();
+                        $shiftType = $employee->shift->ShiftType ?? 'Regular Shift';
+
+                        // Define Rules (Must match Controller)
+                        $shiftRules = [
+                            'Morning Shift' => ['start' => '06:00:00', 'end' => '14:00:00', 'lunch' => '10:00:00'],
+                            'Regular Shift' => ['start' => '08:00:00', 'end' => '17:00:00', 'lunch' => '12:00:00'],
+                            'Night Shift'   => ['start' => '22:00:00', 'end' => '06:00:00', 'lunch' => '02:00:00'],
+                        ];
+                        $rules = $shiftRules[$shiftType] ?? $shiftRules['Regular Shift'];
+
+                        // Parse Times
+                        $shiftStart = \Carbon\Carbon::parse($rules['start'], 'Asia/Manila');
+                        $shiftEnd   = \Carbon\Carbon::parse($rules['end'], 'Asia/Manila');
+                        $lunchTime  = \Carbon\Carbon::parse($rules['lunch'], 'Asia/Manila');
+
+                        // Night Shift Adjustment
+                        if ($shiftStart->gt($shiftEnd)) {
+                            $shiftEnd->addDay();
+                            $lunchTime->addDay();
+                        }
+
+                        // Calculate Permissions
+                        $canClockIn  = $now->gte($shiftStart->copy()->subHour()); // Allow 1hr early
+                        $canLunch    = $now->gte($lunchTime);
+                        $canClockOut = $now->gte($shiftEnd);
                     @endphp
 
                     <!-- Success/Error Messages -->
@@ -116,48 +166,64 @@
                         @csrf
                         
                         @if(!$isClockedIn && !$isClockedOut && !$isOnLunch)
-                            <!-- 1. NOT CLOCKED IN: Show Check In -->
-                            <button type="submit" name="action" value="checkin" class="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-black text-xl rounded-xl shadow-lg transform transition hover:scale-105 flex items-center justify-center gap-3">
-                                <i data-lucide="log-in" class="h-6 w-6"></i>
-                                CHECK IN
-                            </button>
-                            <p class="text-xs text-gray-400 mt-3">Click to start your shift</p>
+                            <!-- 1. NOT CLOCKED IN -->
+                            @if($canClockIn)
+                                <button type="submit" name="action" value="checkin" class="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-black text-xl rounded-xl shadow-lg transform transition hover:scale-105 flex items-center justify-center gap-3">
+                                    <i data-lucide="log-in" class="h-6 w-6"></i>
+                                    CHECK IN
+                                </button>
+                                <p class="text-xs text-gray-400 mt-3">Shift Starts: {{ $shiftStart->format('g:i A') }}</p>
+                            @else
+                                <button type="button" disabled class="w-full py-4 bg-gray-200 text-gray-400 font-black text-xl rounded-xl cursor-not-allowed flex items-center justify-center gap-3">
+                                    <i data-lucide="clock" class="h-6 w-6"></i>
+                                    WAIT FOR SHIFT
+                                </button>
+                                <p class="text-xs text-red-400 mt-3 font-bold">Too Early! Shift starts at {{ $shiftStart->format('g:i A') }}</p>
+                            @endif
 
                         @elseif($isOnLunch)
-                            <!-- 2B. ON LUNCH: Show End Lunch -->
-                            <div class="text-3xl font-black text-orange-500 mb-4">
-                                ON LUNCH
-                            </div>
+                            <!-- 2B. ON LUNCH -->
+                            <div class="text-3xl font-black text-orange-500 mb-4">{{ $displayTime }}</div>
+                            <p class="text-xs text-orange-500 font-bold uppercase mb-4">On Lunch Break</p>
+                            
                             <button type="submit" name="action" value="lunch_end" class="w-full py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg shadow-md transition flex items-center justify-center gap-2">
                                 <i data-lucide="coffee" class="h-5 w-5"></i> End Lunch Break
                             </button>
 
                         @elseif($isClockedIn)
-                            <!-- 2A. CLOCKED IN: Show Start Lunch & Check Out -->
-                            <div class="text-3xl font-black text-blue-900 mb-4">
-                                {{ str_replace('Time In: ', '', $status) }}
-                            </div>
+                            <!-- 2A. WORKING -->
+                            <div class="text-3xl font-black text-blue-900 mb-4">{{ $displayTime }}</div>
                             
                             <div class="grid grid-cols-2 gap-3">
                                 <!-- Start Lunch -->
-                                <button type="submit" name="action" value="lunch_start" class="py-3 bg-orange-100 text-orange-600 font-bold rounded-lg hover:bg-orange-200 transition flex items-center justify-center gap-2 border border-orange-200">
-                                    <i data-lucide="coffee" class="h-5 w-5"></i> Start Lunch
-                                </button>
+                                @if($canLunch)
+                                    <button type="submit" name="action" value="lunch_start" class="py-3 bg-orange-100 text-orange-600 font-bold rounded-lg hover:bg-orange-200 transition flex items-center justify-center gap-2 border border-orange-200">
+                                        <i data-lucide="coffee" class="h-5 w-5"></i> Start Lunch
+                                    </button>
+                                @else
+                                    <button type="button" disabled class="py-3 bg-gray-100 text-gray-400 font-bold rounded-lg flex items-center justify-center gap-2 border border-gray-200 cursor-not-allowed">
+                                        <i data-lucide="coffee" class="h-5 w-5"></i> {{ $lunchTime->format('g:i A') }}
+                                    </button>
+                                @endif
 
                                 <!-- Check Out -->
-                                <button type="submit" name="action" value="checkout" class="py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg shadow-md transition flex items-center justify-center gap-2 transform hover:scale-105">
-                                    <i data-lucide="log-out" class="h-5 w-5"></i> Check Out
-                                </button>
+                                @if($canClockOut)
+                                    <button type="submit" name="action" value="checkout" class="py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg shadow-md transition flex items-center justify-center gap-2 transform hover:scale-105">
+                                        <i data-lucide="log-out" class="h-5 w-5"></i> Check Out
+                                    </button>
+                                @else
+                                    <button type="button" disabled class="py-3 bg-gray-200 text-gray-400 font-bold rounded-lg flex items-center justify-center gap-2 cursor-not-allowed" title="Shift ends at {{ $shiftEnd->format('g:i A') }}">
+                                        <i data-lucide="lock" class="h-5 w-5"></i> {{ $shiftEnd->format('g:i A') }}
+                                    </button>
+                                @endif
                             </div>
                             <p class="text-xs text-green-600 mt-3 font-bold flex items-center justify-center gap-1">
                                 <i data-lucide="activity" class="h-3 w-3"></i> Currently Working
                             </p>
 
                         @else
-                            <!-- 3. CLOCKED OUT: Show Summary -->
-                            <div class="text-3xl font-black text-gray-800 mb-1">
-                                {{ str_replace('Time Out: ', '', $status) }}
-                            </div>
+                            <!-- 3. CLOCKED OUT -->
+                            <div class="text-3xl font-black text-gray-800 mb-1">{{ $displayTime }}</div>
                             <div class="mt-4 py-3 bg-gray-200 text-gray-500 font-bold rounded-xl flex items-center justify-center gap-2 cursor-not-allowed border border-gray-300">
                                 <i data-lucide="check-circle" class="h-5 w-5"></i> Shift Completed
                             </div>
