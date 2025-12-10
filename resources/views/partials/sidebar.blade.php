@@ -1,11 +1,15 @@
 <div class="w-64 bg-white shadow-xl flex flex-col z-10 fixed h-full border-r border-gray-100">
     <!-- Sidebar Header -->
     <div class="h-32 flex flex-col items-center justify-center border-b border-gray-100 bg-white">
-       <div class="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center border border-gray-200 mb-2 overflow-hidden relative">
-          <div class="absolute inset-0 flex items-center justify-center">
-              <span class="text-[8px] font-bold text-blue-900 text-center">LOGO</span>
+       
+       <!-- Updated Logo to match Login Page -->
+       <div class="h-16 w-16 bg-blue-900 rounded-full flex items-center justify-center border-4 border-blue-50 mb-2 overflow-hidden relative shadow-md">
+          <div class="text-center mt-1">
+              <h1 class="text-xl font-extrabold text-white tracking-tighter leading-none">DJLN</h1>
+              <div class="w-6 h-1 bg-yellow-400 mx-auto mt-0.5 rounded-full"></div>
           </div>
        </div>
+
        <h2 class="text-blue-900 font-bold text-sm tracking-wide">ADMIN</h2>
        <h2 class="text-blue-900 font-bold text-lg leading-none">DASHBOARD</h2>
     </div>
@@ -42,7 +46,7 @@
                 </a>
             </li>
 
-            <!-- Report Link (THIS WAS THE ISSUE) -->
+            <!-- Report Link -->
             <li>
                 <a href="{{ route('report') }}" class="flex items-center px-4 py-3 text-sm font-medium {{ Request::routeIs('report') ? 'bg-orange-100 text-blue-900 font-bold rounded-lg relative overflow-hidden' : 'text-gray-500 hover:text-orange-500 transition' }}">
                     @if(Request::routeIs('report')) <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-orange-400"></div> @endif
