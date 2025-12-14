@@ -12,7 +12,11 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            AdminSeeder::class,
+            DepartmentSeeder::class,  // <--- MOVE THIS TO THE TOP
+            AdminSeeder::class,       // Runs second, so it can find departments
+            ActivityLogSeeder::class,
+            FixLogsSeeder::class,
+            LogSeeder::class,
         ]);
     }
 }
